@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Twilio SIP Dialer</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    .dialpad button {
+      @apply w-16 h-16 text-xl m-1 bg-gray-200 rounded-lg shadow;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-4">
+  <div class="w-full max-w-4xl bg-white rounded-2xl shadow-lg p-6">
+    <h2 class="text-2xl font-semibold mb-4">Twilio WebRTC SIP Dialer</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <div class="mb-2">
+          <label class="block text-sm font-medium">From:</label>
+          <input type="text" id="from" value="sathish" readonly class="w-full border rounded p-2">
+        </div>
+        <div class="mb-2">
+          <label class="block text-sm font-medium">To:</label>
+          <input type="text" id="to" placeholder="Enter target identity or phone" class="w-full border rounded p-2">
+        </div>
+        <div class="flex gap-2 mb-4">
+          <button onclick="makeCall()" class="bg-green-500 text-white px-4 py-2 rounded shadow">📞 Place Call</button>
+          <button onclick="hangup()" class="bg-red-500 text-white px-4 py-2 rounded shadow">❌ Hang Up</button>
+        </div>
+
+        <div class="mb-4">
+          <h3 class="font-semibold mb-1">Dial Pad</h3>
+          <div class="dialpad grid grid-cols-3 gap-2">
+            <button onclick="appendToTo('1')">1</button>
+            <button onclick="appendToTo('2')">2</button>
+            <button onclick="appendToTo('3')">3</button>
+            <button onclick="appendToTo('4')">4</button>
+            <button onclick="appendToTo('5')">5</button>
+            <button onclick="appendToTo('6')">6</button>
+            <button onclick="appendToTo('7')">7</button>
+            <button onclick="appendToTo('8')">8</button>
+            <button onclick="appendToTo('9')">9</button>
+            <button onclick="appendToTo('*')">*</button>
+            <button onclick="appendToTo('0')">0</button>
+            <button onclick="appendToTo('#')">#</button>
+          </div>
+        </div>
+      </div>
+      <div>
+        <h3 class="font-semibold mb-1">Session Status / SIP Handshake</h3>
+        <div id="log" class="border p-3 rounded h-64 overflow-y-auto bg-gray-50 text-sm font-mono"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://media.twiliocdn.com/sdk/js/client/v1.13/twilio.min.js"></script>
+  <script>
+    let device;
+
+    fetch('/token?identity=sathish')
+      .then(res => res.json())
+      .then(data => {
+        device = new Twilio.Device(data.token, { debug: true });
+
+        device.on('ready', () => log('📶 Device ready'));
+        device.on('error', err => log('❌ Error: ' + err.message));
+        device.on('connect', conn => {
+          log('✅ Call connected');
+          logHandshake(conn);
+        });
+        device.on('disconnect', () => log('📴 Call disconnected'));
+        device.on('incoming', conn => {
+          log('📥 Incoming call from ' + conn.parameters.From);
+          conn.accept();
+        });
+      })
+      .catch(err => log('Token fetch error: ' + err));
+
+    function makeCall() {
+      const to = document.getElementById('to').value;
+      if (!to) return alert('Enter a To address');
+      log(`📤 Calling ${to}...`);
+      device.connect({ To: to });
+    }
+
+    function hangup() {
+      device.disconnectAll();
+    }
+
+    function log(message) {
+      const logBox = document.getElementById('log');
+      logBox.innerHTML += `<div>> ${message}</div>`;
+      logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    function appendToTo(digit) {
+      const input = document.getElementById('to');
+      input.value += digit;
+    }
+
+    function logHandshake(conn) {
+      if (conn && conn.parameters) {
+        for (const [key, val] of Object.entries(conn.parameters)) {
+          log(`🔧 ${key}: ${val}`);
+        }
+      }
+    }
+  </script>
+</body>
+</html>
